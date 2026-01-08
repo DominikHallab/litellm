@@ -5328,3 +5328,28 @@ def create_dummy_standard_logging_payload() -> StandardLoggingPayload:
         model_parameters={"stream": True},
         hidden_params=hidden_params,
     )
+
+
+# Module-level flag to ensure line profiler shutdown handler is only registered once for _response_cost_calculator
+_response_cost_calculator_profiler_registered = False
+
+# Wrap _response_cost_calculator with line_profiler if available
+try:
+    from litellm.proxy.common_utils.performance_utils import (
+        register_shutdown_handler,
+        wrap_function_directly,
+    )
+    
+    # Wrap the method with line_profiler
+    Logging._response_cost_calculator = wrap_function_directly(Logging._response_cost_calculator)  # type: ignore
+    
+    # Register shutdown handler only once (module-level)
+    if not _response_cost_calculator_profiler_registered:
+        register_shutdown_handler(output_file="response_cost_calculator_line_profile.lprof")
+        _response_cost_calculator_profiler_registered = True
+except ImportError:
+    # line_profiler not available, continue without profiling
+    pass
+except Exception:
+    # Silently continue if profiling setup fails
+    pass

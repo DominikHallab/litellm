@@ -136,6 +136,9 @@ def _get_cached_llm_caching_handler():
 # Module-level cache to avoid repeated imports while preserving memory benefits
 _audio_utils_module = None
 
+# Module-level flag to ensure line profiler shutdown handler is only registered once
+_line_profiler_shutdown_registered = False
+
 
 def _get_cached_audio_utils():
     """
@@ -1918,6 +1921,29 @@ def client(original_function):  # noqa: PLR0915
 
     get_coroutine_checker = getattr(sys.modules[__name__], 'get_coroutine_checker')
     is_coroutine = get_coroutine_checker().is_async_callable(original_function)
+
+    # Wrap wrapper_async with line_profiler if available
+    if is_coroutine:
+        try:
+            from litellm.proxy.common_utils.performance_utils import (
+                register_shutdown_handler,
+                wrap_function_directly,
+            )
+            
+            # Wrap the async wrapper with line_profiler
+            wrapper_async = wrap_function_directly(wrapper_async)  # type: ignore
+            
+            # Register shutdown handler only once (module-level)
+            global _line_profiler_shutdown_registered
+            if not _line_profiler_shutdown_registered:
+                register_shutdown_handler(output_file="wrapper_async_line_profile.lprof")
+                _line_profiler_shutdown_registered = True
+        except ImportError:
+            # line_profiler not available, continue without profiling
+            pass
+        except Exception:
+            # Silently continue if profiling setup fails
+            pass
 
     # Return the appropriate wrapper based on the original function type
     if is_coroutine:
@@ -5441,6 +5467,31 @@ def _get_model_info_helper(  # noqa: PLR0915
         )
 
 
+# Module-level flag to ensure line profiler shutdown handler is only registered once for _get_model_info_helper
+_get_model_info_helper_profiler_registered = False
+
+# Wrap _get_model_info_helper with line_profiler if available
+try:
+    from litellm.proxy.common_utils.performance_utils import (
+        register_shutdown_handler,
+        wrap_function_directly,
+    )
+    
+    # Wrap the function with line_profiler
+    _get_model_info_helper = wrap_function_directly(_get_model_info_helper)  # type: ignore
+    
+    # Register shutdown handler only once (module-level)
+    if not _get_model_info_helper_profiler_registered:
+        register_shutdown_handler(output_file="get_model_info_helper_line_profile.lprof")
+        _get_model_info_helper_profiler_registered = True
+except ImportError:
+    # line_profiler not available, continue without profiling
+    pass
+except Exception:
+    # Silently continue if profiling setup fails
+    pass
+
+
 def get_model_info(model: str, custom_llm_provider: Optional[str] = None) -> ModelInfo:
     """
     Get a dict for the maximum tokens (context window), input_cost_per_token, output_cost_per_token  for a given model.
@@ -5528,6 +5579,31 @@ def get_model_info(model: str, custom_llm_provider: Optional[str] = None) -> Mod
     )
 
     return returned_model_info
+
+
+# Module-level flag to ensure line profiler shutdown handler is only registered once for get_model_info
+_get_model_info_profiler_registered = False
+
+# Wrap get_model_info with line_profiler if available
+try:
+    from litellm.proxy.common_utils.performance_utils import (
+        register_shutdown_handler,
+        wrap_function_directly,
+    )
+    
+    # Wrap the function with line_profiler
+    get_model_info = wrap_function_directly(get_model_info)  # type: ignore
+    
+    # Register shutdown handler only once (module-level)
+    if not _get_model_info_profiler_registered:
+        register_shutdown_handler(output_file="get_model_info_line_profile.lprof")
+        _get_model_info_profiler_registered = True
+except ImportError:
+    # line_profiler not available, continue without profiling
+    pass
+except Exception:
+    # Silently continue if profiling setup fails
+    pass
 
 
 def json_schema_type(python_type_name: str):
@@ -8763,3 +8839,34 @@ def __getattr__(name: str) -> Any:
         return handler_func(name)
     
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+# Module-level flag to ensure line profiler shutdown handler is only registered once for get_provider_chat_config
+_get_provider_chat_config_profiler_registered = False
+
+# Wrap ProviderConfigManager.get_provider_chat_config with line_profiler if available
+try:
+    from litellm.proxy.common_utils.performance_utils import (
+        register_shutdown_handler,
+        wrap_function_directly,
+    )
+    
+    # Store the original method (get the underlying function from the staticmethod)
+    _original_get_provider_chat_config = ProviderConfigManager.get_provider_chat_config  # type: ignore
+    
+    # Wrap the function with line_profiler
+    _wrapped_get_provider_chat_config = wrap_function_directly(_original_get_provider_chat_config)  # type: ignore
+    
+    # Replace the static method with the wrapped version
+    ProviderConfigManager.get_provider_chat_config = staticmethod(_wrapped_get_provider_chat_config)  # type: ignore
+    
+    # Register shutdown handler only once (module-level)
+    if not _get_provider_chat_config_profiler_registered:
+        register_shutdown_handler(output_file="get_provider_chat_config_line_profile.lprof")
+        _get_provider_chat_config_profiler_registered = True
+except ImportError:
+    # line_profiler not available, continue without profiling
+    pass
+except Exception:
+    # Silently continue if profiling setup fails
+    pass

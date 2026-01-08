@@ -244,6 +244,31 @@ def _get_token_base_cost(
     )
 
 
+# Module-level flag to ensure line profiler shutdown handler is only registered once for _get_token_base_cost
+_get_token_base_cost_profiler_registered = False
+
+# Wrap _get_token_base_cost with line_profiler if available
+try:
+    from litellm.proxy.common_utils.performance_utils import (
+        register_shutdown_handler,
+        wrap_function_directly,
+    )
+    
+    # Wrap the function with line_profiler
+    _get_token_base_cost = wrap_function_directly(_get_token_base_cost)  # type: ignore
+    
+    # Register shutdown handler only once (module-level)
+    if not _get_token_base_cost_profiler_registered:
+        register_shutdown_handler(output_file="get_token_base_cost_line_profile.lprof")
+        _get_token_base_cost_profiler_registered = True
+except ImportError:
+    # line_profiler not available, continue without profiling
+    pass
+except Exception:
+    # Silently continue if profiling setup fails
+    pass
+
+
 def calculate_cost_component(
     model_info: ModelInfo, cost_key: str, usage_value: Optional[float]
 ) -> float:
@@ -521,6 +546,31 @@ def _calculate_input_cost(
     return prompt_cost
 
 
+# Module-level flag to ensure line profiler shutdown handler is only registered once for _calculate_input_cost
+_calculate_input_cost_profiler_registered = False
+
+# Wrap _calculate_input_cost with line_profiler if available
+try:
+    from litellm.proxy.common_utils.performance_utils import (
+        register_shutdown_handler,
+        wrap_function_directly,
+    )
+    
+    # Wrap the function with line_profiler
+    _calculate_input_cost = wrap_function_directly(_calculate_input_cost)  # type: ignore
+    
+    # Register shutdown handler only once (module-level)
+    if not _calculate_input_cost_profiler_registered:
+        register_shutdown_handler(output_file="calculate_input_cost_line_profile.lprof")
+        _calculate_input_cost_profiler_registered = True
+except ImportError:
+    # line_profiler not available, continue without profiling
+    pass
+except Exception:
+    # Silently continue if profiling setup fails
+    pass
+
+
 def generic_cost_per_token(
     model: str,
     usage: Usage,
@@ -661,6 +711,31 @@ def generic_cost_per_token(
         completion_cost += float(image_tokens) * _output_cost_per_image_token
 
     return prompt_cost, completion_cost
+
+
+# Module-level flag to ensure line profiler shutdown handler is only registered once for generic_cost_per_token
+_generic_cost_per_token_profiler_registered = False
+
+# Wrap generic_cost_per_token with line_profiler if available
+try:
+    from litellm.proxy.common_utils.performance_utils import (
+        register_shutdown_handler,
+        wrap_function_directly,
+    )
+    
+    # Wrap the function with line_profiler
+    generic_cost_per_token = wrap_function_directly(generic_cost_per_token)  # type: ignore
+    
+    # Register shutdown handler only once (module-level)
+    if not _generic_cost_per_token_profiler_registered:
+        register_shutdown_handler(output_file="generic_cost_per_token_line_profile.lprof")
+        _generic_cost_per_token_profiler_registered = True
+except ImportError:
+    # line_profiler not available, continue without profiling
+    pass
+except Exception:
+    # Silently continue if profiling setup fails
+    pass
 
 
 class CostCalculatorUtils:

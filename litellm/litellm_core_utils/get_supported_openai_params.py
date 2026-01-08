@@ -302,3 +302,28 @@ def get_supported_openai_params(  # noqa: PLR0915
             return None
 
     return None
+
+
+# Module-level flag to ensure line profiler shutdown handler is only registered once for get_supported_openai_params
+_get_supported_openai_params_profiler_registered = False
+
+# Wrap get_supported_openai_params with line_profiler if available
+try:
+    from litellm.proxy.common_utils.performance_utils import (
+        register_shutdown_handler,
+        wrap_function_directly,
+    )
+    
+    # Wrap the function with line_profiler
+    get_supported_openai_params = wrap_function_directly(get_supported_openai_params)  # type: ignore
+    
+    # Register shutdown handler only once (module-level)
+    if not _get_supported_openai_params_profiler_registered:
+        register_shutdown_handler(output_file="get_supported_openai_params_line_profile.lprof")
+        _get_supported_openai_params_profiler_registered = True
+except ImportError:
+    # line_profiler not available, continue without profiling
+    pass
+except Exception:
+    # Silently continue if profiling setup fails
+    pass

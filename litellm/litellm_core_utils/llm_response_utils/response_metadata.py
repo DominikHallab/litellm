@@ -1,6 +1,7 @@
 import datetime
 from typing import Any, Optional, Union
 
+from litellm._logging import verbose_logger
 from litellm.litellm_core_utils.core_helpers import process_response_headers
 from litellm.litellm_core_utils.llm_response_utils.get_api_base import get_api_base
 from litellm.litellm_core_utils.logging_utils import LiteLLMLoggingObject
@@ -134,6 +135,31 @@ class ResponseMetadata:
             self.result._hidden_params = self._hidden_params
 
 
+# Module-level flag to ensure line profiler shutdown handler is only registered once for set_hidden_params
+_set_hidden_params_profiler_registered = False
+
+# Wrap set_hidden_params with line_profiler if available
+try:
+    from litellm.proxy.common_utils.performance_utils import (
+        register_shutdown_handler,
+        wrap_function_directly,
+    )
+    
+    # Wrap the method with line_profiler
+    ResponseMetadata.set_hidden_params = wrap_function_directly(ResponseMetadata.set_hidden_params)  # type: ignore
+    
+    # Register shutdown handler only once (module-level)
+    if not _set_hidden_params_profiler_registered:
+        register_shutdown_handler(output_file="set_hidden_params_line_profile.lprof")
+        _set_hidden_params_profiler_registered = True
+except ImportError:
+    # line_profiler not available, continue without profiling
+    pass
+except Exception:
+    # Silently continue if profiling setup fails
+    pass
+
+
 def update_response_metadata(
     result: Any,
     logging_obj: LiteLLMLoggingObject,
@@ -156,3 +182,28 @@ def update_response_metadata(
     metadata.set_hidden_params(logging_obj, model, kwargs)
     metadata.set_timing_metrics(start_time, end_time, logging_obj)
     metadata.apply()
+
+
+# Module-level flag to ensure line profiler shutdown handler is only registered once
+_update_response_metadata_profiler_registered = False
+
+# Wrap update_response_metadata with line_profiler if available
+try:
+    from litellm.proxy.common_utils.performance_utils import (
+        register_shutdown_handler,
+        wrap_function_directly,
+    )
+    
+    # Wrap the function with line_profiler
+    update_response_metadata = wrap_function_directly(update_response_metadata)  # type: ignore
+    
+    # Register shutdown handler only once (module-level)
+    if not _update_response_metadata_profiler_registered:
+        register_shutdown_handler(output_file="update_response_metadata_line_profile.lprof")
+        _update_response_metadata_profiler_registered = True
+except ImportError:
+    # line_profiler not available, continue without profiling
+    pass
+except Exception:
+    # Silently continue if profiling setup fails
+    pass

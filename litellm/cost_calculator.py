@@ -475,6 +475,31 @@ def cost_per_token(  # noqa: PLR0915
         return prompt_tokens_cost_usd_dollar, completion_tokens_cost_usd_dollar
 
 
+# Module-level flag to ensure line profiler shutdown handler is only registered once for cost_per_token
+_cost_per_token_profiler_registered = False
+
+# Wrap cost_per_token with line_profiler if available
+try:
+    from litellm.proxy.common_utils.performance_utils import (
+        register_shutdown_handler,
+        wrap_function_directly,
+    )
+    
+    # Wrap the function with line_profiler
+    cost_per_token = wrap_function_directly(cost_per_token)  # type: ignore
+    
+    # Register shutdown handler only once (module-level)
+    if not _cost_per_token_profiler_registered:
+        register_shutdown_handler(output_file="cost_per_token_line_profile.lprof")
+        _cost_per_token_profiler_registered = True
+except ImportError:
+    # line_profiler not available, continue without profiling
+    pass
+except Exception:
+    # Silently continue if profiling setup fails
+    pass
+
+
 def get_replicate_completion_pricing(completion_response: dict, total_time=0.0):
     # see https://replicate.com/pricing
     # for all litellm currently supported LLMs, almost all requests go to a100_80gb
@@ -1369,6 +1394,31 @@ def completion_cost(  # noqa: PLR0915
         raise e
 
 
+# Module-level flag to ensure line profiler shutdown handler is only registered once for completion_cost
+_completion_cost_profiler_registered = False
+
+# Wrap completion_cost with line_profiler if available
+try:
+    from litellm.proxy.common_utils.performance_utils import (
+        register_shutdown_handler,
+        wrap_function_directly,
+    )
+    
+    # Wrap the function with line_profiler
+    completion_cost = wrap_function_directly(completion_cost)  # type: ignore
+    
+    # Register shutdown handler only once (module-level)
+    if not _completion_cost_profiler_registered:
+        register_shutdown_handler(output_file="completion_cost_line_profile.lprof")
+        _completion_cost_profiler_registered = True
+except ImportError:
+    # line_profiler not available, continue without profiling
+    pass
+except Exception:
+    # Silently continue if profiling setup fails
+    pass
+
+
 def get_response_cost_from_hidden_params(
     hidden_params: Union[dict, BaseModel],
 ) -> Optional[float]:
@@ -1474,6 +1524,31 @@ def response_cost_calculator(
         return response_cost
     except Exception as e:
         raise e
+
+
+# Module-level flag to ensure line profiler shutdown handler is only registered once for response_cost_calculator
+_response_cost_calculator_profiler_registered = False
+
+# Wrap response_cost_calculator with line_profiler if available
+try:
+    from litellm.proxy.common_utils.performance_utils import (
+        register_shutdown_handler,
+        wrap_function_directly,
+    )
+    
+    # Wrap the function with line_profiler
+    response_cost_calculator = wrap_function_directly(response_cost_calculator)  # type: ignore
+    
+    # Register shutdown handler only once (module-level)
+    if not _response_cost_calculator_profiler_registered:
+        register_shutdown_handler(output_file="cost_calculator_response_cost_calculator_line_profile.lprof")
+        _response_cost_calculator_profiler_registered = True
+except ImportError:
+    # line_profiler not available, continue without profiling
+    pass
+except Exception:
+    # Silently continue if profiling setup fails
+    pass
 
 
 def ocr_cost(
